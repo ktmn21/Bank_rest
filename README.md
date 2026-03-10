@@ -1,1 +1,482 @@
-<h1>Bank Cards API</h1> <h2>Overview</h2> <p>REST API для управления банковскими картами с ролями <b>ADMIN</b> и <b>USER</b>, аутентификацией через JWT и документированием через Swagger UI.</p> <h2>Features</h2> <ul> <li>Регистрация и аутентификация пользователей (JWT).</li> <li>Роли: <ul> <li>ADMIN: создаёт, блокирует, активирует, удаляет карты, управляет пользователями, видит все карты.</li> <li>USER: управляет своими картами, может инициировать переводы, запрашивать блокировку карты.</li> </ul> </li> <li>Операции с картами: <ul> <li>Создание карты администратором.</li> <li>Просмотр всех карт (ADMIN) и своих карт (USER).</li> <li>Блокировка / активация / удаление карты (ADMIN).</li> <li>Запрос на блокировку своей карты (USER).</li> </ul> </li> <li>Управление пользователями (ADMIN).</li> <li>Переводы между картами текущего пользователя.</li> </ul> <h2>Tech Stack</h2> <ul> <li>Java 17</li> <li>Spring Boot 3.x</li> <li>Spring Security 6 + JWT</li> <li>Spring Data JPA (Hibernate)</li> <li>PostgreSQL</li> <li>Maven</li> <li>Swagger / springdoc-openapi</li> <li>Docker</li> </ul> <h2>Getting Started</h2> <h3>Clone and configure</h3> <pre><code>git clone https://github.com/&lt;your-username&gt;/&lt;your-repo&gt;.git cd &lt;your-repo&gt; </code></pre> <h3>Database configuration</h3> <p>В <code>application.yml</code> или <code>application.properties</code> настройте подключение к PostgreSQL:</p> <pre><code>spring.datasource.url=jdbc:postgresql://localhost:5432/bankcards spring.datasource.username=postgres spring.datasource.password=postgres spring.jpa.hibernate.ddl-auto=validate </code></pre> <h3>Run locally</h3> <pre><code>mvn clean spring-boot:run </code></pre> <h3>Swagger UI</h3> <ul> <li>URL: <code>http://localhost:8080/swagger-ui/index.html</code></li> </ul> <h2>Docker</h2> <h3>Build and run</h3> <pre><code>mvn clean package -DskipTests docker build -t bank-cards-api . docker run -p 8080:8080 --name bank-cards-api bank-cards-api </code></pre> <p>Swagger UI останется доступен по <code>http://localhost:8080/swagger-ui/index.html</code>.</p> <h2>Authentication &amp; JWT</h2> <p>Базовый URL: <code>/api/auth</code></p> <h3>Register</h3> <p><b>POST</b> <code>/api/auth/register</code></p> <p>Request body (<code>RegisterRequest</code>):</p> <pre><code>{ "username": "user1", "email": "user1@example.com", "password": "password123" } </code></pre> <p>Response (200 OK): <code>"User registered successfully"</code> или сообщение об ошибке.</p> <h3>Login</h3> <p><b>POST</b> <code>/api/auth/login</code></p> <p>Request body (<code>LoginRequest</code>):</p> <pre><code>{ "username": "user1", "password": "password123" } </code></pre> <p>Response (<code>JwtResponse</code>):</p> <pre><code>{ "token": "&lt;JWT_TOKEN&gt;", "username": "user1" } </code></pre> <h3>Current user</h3> <p><b>GET</b> <code>/api/auth/me</code> (требуется Bearer токен)</p> <p>Response (<code>UserResponse</code>):</p> <pre><code>{ "id": 1, "username": "user1", "email": "user1@example.com", "role": "USER", "createdAt": "2026-03-10T17:26:57.792236" } </code></pre> <h3>Using JWT in Swagger</h3> <ol> <li>Вызвать <code>/api/auth/login</code> и получить <code>token</code>.</li> <li>В Swagger UI нажать кнопку <b>Authorize</b>.</li> <li>Вставить значение: <pre><code>Bearer &lt;JWT_TOKEN&gt;</code></pre> </li> <li>Нажать <b>Authorize</b> и закрыть окно.</li> </ol> <h2>User Management (ADMIN)</h2> <p>Базовый URL: <code>/api/users</code></p> <p>Все эндпоинты ниже требуют роли <code>ADMIN</code>.</p> <h3>Create user</h3> <p><b>POST</b> <code>/api/users</code></p> <ul> <li>Query param: <code>role</code> (optional, default <code>USER</code>)</li> </ul> <p>Request body (<code>RegisterRequest</code>):</p> <pre><code>{ "username": "newuser", "email": "newuser@example.com", "password": "password123" } </code></pre> <p>Response (201 Created): <code>UserResponse</code>.</p> <h3>Get all users (paged)</h3> <p><b>GET</b> <code>/api/users</code></p> <ul> <li>Query params: стандартные <code>page</code>, <code>size</code>, <code>sort</code> (Spring Pageable).</li> </ul> <p>Response: страница <code>UserResponse</code>.</p> <h3>Get user by ID</h3> <p><b>GET</b> <code>/api/users/{id}</code></p> <ul> <li>200 OK – <code>UserResponse</code></li> <li>404 Not Found – если пользователь не найден</li> </ul> <h3>Update user role</h3> <p><b>PATCH</b> <code>/api/users/{id}/role</code></p> <ul> <li>Query param: <code>role</code> (required, например <code>ADMIN</code> или <code>USER</code>).</li> </ul> <p>Response: 200 OK – обновлённый <code>UserResponse</code>.</p> <h3>Delete user</h3> <p><b>DELETE</b> <code>/api/users/{id}</code></p> <ul> <li>Response: 204 No Content</li> </ul> <h2>Cards Management</h2> <p>Базовый URL: <code>/api/cards</code></p> <h3>ADMIN: Create card</h3> <p><b>POST</b> <code>/api/cards</code></p> <p>Требуется роль <code>ADMIN</code>.</p> <p>Request body (<code>CreateCardRequest</code>):</p> <pre><code>{ "cardNumber": "1234567812345678", "ownerId": 1, "expiryDate": "2028-12-31", "initialBalance": 0.00 } </code></pre> <p>Response (201 Created): <code>CardResponse</code>.</p> <h3>ADMIN: Get all cards (paged)</h3> <p><b>GET</b> <code>/api/cards</code></p> <ul> <li>Требуется <code>ADMIN</code>.</li> <li>Query params: <code>page</code>, <code>size</code>, <code>sort</code>.</li> </ul> <p>Response: страница <code>CardResponse</code>.</p> <h3>USER: Get own cards</h3> <p><b>GET</b> <code>/api/cards/my</code></p> <ul> <li>Требуется аутентификация (любой пользователь).</li> <li>Query params: <ul> <li><code>status</code> (optional) – фильтр по статусу карты.</li> <li><code>page</code>, <code>size</code>, <code>sort</code> – пагинация.</li> </ul> </li> </ul> <p>Response: страница <code>CardResponse</code> только для текущего пользователя.</p> <h3>ADMIN: Block card</h3> <p><b>PATCH</b> <code>/api/cards/{id}/block</code></p> <ul> <li>Требуется <code>ADMIN</code>.</li> <li>Response: 200 OK – обновлённый <code>CardResponse</code> со статусом блокировки.</li> </ul> <h3>ADMIN: Activate card</h3> <p><b>PATCH</b> <code>/api/cards/{id}/activate</code></p> <ul> <li>Требуется <code>ADMIN</code>.</li> <li>Response: 200 OK – обновлённый <code>CardResponse</code> со статусом <code>ACTIVE</code>.</li> </ul> <h3>USER: Request block of own card</h3> <p><b>PATCH</b> <code>/api/cards/{id}/request-block</code></p> <ul> <li>Требуется аутентификация.</li> <li>Проверяется, что карта принадлежит текущему пользователю.</li> <li>Response: 200 OK – <code>CardResponse</code> (детали зависят от реализации сервиса).</li> </ul> <h3>ADMIN: Delete card</h3> <p><b>DELETE</b> <code>/api/cards/{id}</code></p> <ul> <li>Требуется <code>ADMIN</code>.</li> <li>Response: 204 No Content.</li> </ul> <h2>Transfers</h2> <p>Базовый URL: <code>/api/transfers</code></p> <h3>Create transfer</h3> <p><b>POST</b> <code>/api/transfers</code></p> <ul> <li>Требуется аутентификация (Bearer токен).</li> <li>Текущий пользователь берётся из <code>@AuthenticationPrincipal</code>.</li> </ul> <p>Request body (<code>TransferRequest</code>), пример:</p> <pre><code>{ "fromCardId": 1, "toCardId": 2, "amount": 100.00 } </code></pre> <p>Response (200 OK): <code>"Transfer successful"</code>.</p> <h2>Possible Improvements</h2> <ul> <li>История транзакций по карте.</li> <li>Расширенные проверки лимитов и статуса карты при переводах.</li> <li>Интеграция с внешними платёжными сервисами.</li> <li>Unit и integration тесты для ключевых сервисов и контроллеров.</li> </ul>
+# Bank Cards API
+
+REST API для управления банковскими картами с ролями **ADMIN** и **USER**,  
+аутентификацией через **JWT** и документированием через **Swagger UI**.
+
+Repository:  
+https://github.com/ktmn21/Bank_rest
+
+---
+
+# Функционал
+
+## Аутентификация
+- Регистрация пользователей
+- Логин через JWT
+- Получение текущего пользователя
+
+---
+
+## Роли
+
+### ADMIN
+- создаёт карты
+- блокирует карты
+- активирует карты
+- удаляет карты
+- управляет пользователями
+- видит все карты
+
+### USER
+- управляет своими картами
+- может инициировать переводы
+- может запрашивать блокировку карты
+
+---
+
+# Операции с картами
+
+- Создание карты администратором
+- Просмотр всех карт (**ADMIN**)
+- Просмотр своих карт (**USER**)
+- Блокировка карты (**ADMIN**)
+- Активация карты (**ADMIN**)
+- Удаление карты (**ADMIN**)
+- Запрос на блокировку своей карты (**USER**)
+
+---
+
+# Управление пользователями
+
+Доступно только для **ADMIN**
+
+- создание пользователя
+- получение списка пользователей
+- получение пользователя по ID
+- изменение роли пользователя
+- удаление пользователя
+
+---
+
+# Переводы
+
+Пользователь может выполнять переводы **между своими картами**.
+
+---
+
+# Стек технологий
+
+- Java 17
+- Spring Boot 3.x
+- Spring Security 6 + JWT
+- Spring Data JPA (Hibernate)
+- PostgreSQL
+- Maven
+- Swagger / springdoc-openapi
+- Docker
+
+---
+
+# Запуск проекта
+
+## Клонирование репозитория
+
+```bash
+git clone https://github.com/ktmn21/Bank_rest.git
+cd Bank_rest
+```
+
+---
+
+## Настройка базы данных
+
+В `application.yml` или `application.properties`:
+
+```
+spring.datasource.url=jdbc:postgresql://localhost:5432/bankcards
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+spring.jpa.hibernate.ddl-auto=validate
+```
+
+---
+
+## Запуск приложения
+
+```bash
+mvn clean spring-boot:run
+```
+
+---
+
+## Swagger UI
+
+После запуска:
+
+```
+http://localhost:8080/swagger-ui/index.html
+```
+
+---
+
+# Запуск через Docker
+
+Если добавлен **Dockerfile**:
+
+```bash
+mvn clean package -DskipTests
+docker build -t bank-cards-api .
+docker run -p 8080:8080 --name bank-cards-api bank-cards-api
+```
+
+Swagger будет доступен по адресу:
+
+```
+http://localhost:8080/swagger-ui/index.html
+```
+
+---
+
+# Аутентификация и JWT
+
+Базовый URL:
+
+```
+/api/auth
+```
+
+---
+
+# Регистрация
+
+### POST `/api/auth/register`
+
+### Request Body
+
+```json
+{
+  "username": "user1",
+  "email": "user1@example.com",
+  "password": "password123"
+}
+```
+
+### Response
+
+```
+200 OK
+User registered successfully
+```
+
+или сообщение об ошибке, если **username/email уже заняты**.
+
+---
+
+# Логин
+
+### POST `/api/auth/login`
+
+### Request Body
+
+```json
+{
+  "username": "user1",
+  "password": "password123"
+}
+```
+
+### Response
+
+```json
+{
+  "token": "<JWT_TOKEN>",
+  "username": "user1"
+}
+```
+
+---
+
+# Текущий пользователь
+
+### GET `/api/auth/me`
+
+Требует **Bearer Token**
+
+### Response
+
+```json
+{
+  "id": 1,
+  "username": "user1",
+  "email": "user1@example.com",
+  "role": "USER",
+  "createdAt": "2026-03-10T17:26:57.792236"
+}
+```
+
+---
+
+# Использование JWT в Swagger
+
+1. Получить токен через `/api/auth/login`
+2. В Swagger нажать **Authorize**
+3. Вставить:
+
+```
+Bearer <JWT_TOKEN>
+```
+
+4. Нажать **Authorize**
+
+После этого все защищённые эндпоинты будут работать.
+
+---
+
+# Управление пользователями (ADMIN)
+
+Базовый URL:
+
+```
+/api/users
+```
+
+Все эндпоинты требуют **ADMIN**.
+
+---
+
+## Создать пользователя
+
+### POST `/api/users`
+
+Query параметры:
+
+```
+role (optional) = USER | ADMIN
+```
+
+### Body
+
+```json
+{
+  "username": "newuser",
+  "email": "newuser@example.com",
+  "password": "password123"
+}
+```
+
+### Response
+
+```
+201 Created
+```
+
+---
+
+## Получить всех пользователей
+
+### GET `/api/users`
+
+Поддерживает **pagination**
+
+```
+page
+size
+sort
+```
+
+---
+
+## Получить пользователя по ID
+
+### GET `/api/users/{id}`
+
+Response:
+
+```
+200 OK
+```
+
+или
+
+```
+404 Not Found
+```
+
+---
+
+## Обновить роль пользователя
+
+### PATCH `/api/users/{id}/role`
+
+Query параметр:
+
+```
+role = ADMIN | USER
+```
+
+---
+
+## Удалить пользователя
+
+### DELETE `/api/users/{id}`
+
+Response
+
+```
+204 No Content
+```
+
+---
+
+# Управление картами
+
+Базовый URL:
+
+```
+/api/cards
+```
+
+---
+
+# ADMIN — создать карту
+
+### POST `/api/cards`
+
+```json
+{
+  "cardNumber": "1234567812345678",
+  "ownerId": 1,
+  "expiryDate": "2028-12-31",
+  "initialBalance": 0.00
+}
+```
+
+Response
+
+```
+201 Created
+```
+
+---
+
+# ADMIN — получить все карты
+
+### GET `/api/cards`
+
+Поддерживает:
+
+```
+page
+size
+sort
+```
+
+---
+
+# USER — получить свои карты
+
+### GET `/api/cards/my`
+
+Query параметры:
+
+```
+status (optional)
+page
+size
+sort
+```
+
+Возвращает **только карты текущего пользователя**.
+
+---
+
+# ADMIN — заблокировать карту
+
+### PATCH `/api/cards/{id}/block`
+
+Response
+
+```
+200 OK
+```
+
+---
+
+# ADMIN — активировать карту
+
+### PATCH `/api/cards/{id}/activate`
+
+Response
+
+```
+200 OK
+```
+
+---
+
+# USER — запросить блокировку карты
+
+### PATCH `/api/cards/{id}/request-block`
+
+Использует `@AuthenticationPrincipal` для проверки владельца карты.
+
+---
+
+# ADMIN — удалить карту
+
+### DELETE `/api/cards/{id}`
+
+Response
+
+```
+204 No Content
+```
+
+---
+
+# Переводы между картами
+
+Базовый URL:
+
+```
+/api/transfers
+```
+
+---
+
+# Создать перевод
+
+### POST `/api/transfers`
+
+### Body
+
+```json
+{
+  "fromCardId": 1,
+  "toCardId": 2,
+  "amount": 100.00
+}
+```
+
+Контроллер проверяет владельца карты через:
+
+```
+@AuthenticationPrincipal
+```
+
+### Response
+
+```
+Transfer successful
+```
+
+Логика перевода реализована в **TransferService.transfer**.
+
+---
+
+# Автор
+
+**Kutman Mukarapov**
+
+GitHub:  
+https://github.com/ktmn21
