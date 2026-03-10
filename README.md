@@ -121,8 +121,6 @@ http://localhost:8080/swagger-ui/index.html
 
 # Запуск через Docker
 
-Если добавлен **Dockerfile**:
-
 ```bash
 mvn clean package -DskipTests
 docker build -t bank-cards-api .
