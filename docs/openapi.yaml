@@ -1,1 +1,474 @@
-# Здесь будет OpenAPI описание всех доступных эндпоинтов и моделей данных.
+openapi: 3.0.3
+info:
+  title: Bank Cards Management API
+  version: 1.0.0
+  description: API for managing bank cards, users, and transfers with JWT authentication.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/auth/login:
+    post:
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtResponse'
+        '401':
+          description: Invalid credentials
+
+  /api/auth/register:
+    post:
+      summary: User registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: User registered successfully
+        '400':
+          description: Bad request
+
+  /api/cards:
+    post:
+      summary: Create a new card (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardRequest'
+      responses:
+        '201':
+          description: Card created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        '403':
+          description: Forbidden
+    get:
+      summary: Get all cards (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCardResponse'
+
+  /api/cards/my:
+    get:
+      summary: Get my cards (User)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CardStatus'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of user's cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCardResponse'
+
+  /api/cards/{id}/block:
+    patch:
+      summary: Block a card (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Card blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+
+  /api/cards/{id}/activate:
+    patch:
+      summary: Activate a card (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Card activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+
+  /api/cards/{id}/request-block:
+    patch:
+      summary: Request to block own card (User)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Card block requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+
+  /api/cards/{id}:
+    delete:
+      summary: Delete a card (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Card deleted
+
+  /api/transfers:
+    post:
+      summary: Transfer money between own cards (User)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '200':
+          description: Transfer successful
+        '400':
+          description: Bad request
+
+  /api/users:
+    post:
+      summary: Create a user (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/Role'
+          default: USER
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    get:
+      summary: Get all users (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageUserResponse'
+
+  /api/users/{id}:
+    get:
+      summary: Get user by ID (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+    delete:
+      summary: Delete user (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: User deleted
+
+  /api/users/{id}/role:
+    patch:
+      summary: Update user role (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: role
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/Role'
+      responses:
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    JwtResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        username:
+          type: string
+
+    CreateCardRequest:
+      type: object
+      required:
+        - cardNumber
+        - ownerId
+        - expiryDate
+        - initialBalance
+      properties:
+        cardNumber:
+          type: string
+        ownerId:
+          type: integer
+          format: int64
+        expiryDate:
+          type: string
+          format: date
+        initialBalance:
+          type: number
+          format: decimal
+
+    CardResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        maskedCardNumber:
+          type: string
+        ownerUsername:
+          type: string
+        expiryDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/CardStatus'
+        balance:
+          type: number
+          format: decimal
+
+    PageCardResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardResponse'
+        pageable:
+          type: object
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    TransferRequest:
+      type: object
+      required:
+        - fromCardId
+        - toCardId
+        - amount
+      properties:
+        fromCardId:
+          type: integer
+          format: int64
+        toCardId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: decimal
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        createdAt:
+          type: string
+          format: date-time
+
+    PageUserResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        pageable:
+          type: object
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    CardStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - BLOCKED
+        - EXPIRED
+
+    Role:
+      type: string
+      enum:
+        - ADMIN
+        - USER
